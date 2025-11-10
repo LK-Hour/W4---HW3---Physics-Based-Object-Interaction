@@ -1,7 +1,8 @@
 # 📚 Week 4 Physics Engine - Complete Documentation Index
 
 **Lecturer:** Dr. VA Hongly  
-**Course:** Game Development 
+**Course:** Game Development  
+
 **Student:** Loem Kimhour  ID: IDTB100357
 
 ---
