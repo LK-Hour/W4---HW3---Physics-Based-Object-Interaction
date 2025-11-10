@@ -1,8 +1,8 @@
 # 📚 Week 4 Physics Engine - Complete Documentation Index
 
 **Lecturer:** Dr. VA Hongly  
-**Course:** Game Development  
-**Assignment Deadline:** November 8, 2025 (11:59 PM)
+**Course:** Game Development 
+**Student** Loem Kimhour  ID: IDTB100357
 
 ---
 
