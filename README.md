@@ -2,7 +2,6 @@
 
 **Lecturer:** Dr. VA Hongly  
 **Course:** Game Development  
-
 **Student:** Loem Kimhour  ID: IDTB100357
 
 ---
