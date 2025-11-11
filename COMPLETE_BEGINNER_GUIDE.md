@@ -173,6 +173,8 @@ Assets/
    - Position: `X: 0, Y: 0, Z: 0`
    - Scale: `X: 5, Y: 1, Z: 5` (makes it 50x50 units)
 
+**Important Note:** Planes automatically come with a **Mesh Collider** component. This is perfect for ground surfaces!
+
 ### 4.2 Create Ground Material
 
 1. Materials folder → Right-click → Create → **Material**
@@ -320,14 +322,19 @@ Assets/
 
 ## ⚙️ Step 7: Zone 2 - Joints Mechanism
 
-### 7.1 Create Fixed Joint Base
+### 7.1 Create Hinge Joint Anchor
 
 1. 3D Object → **Cube**
 2. Rename: `JointBase`
 3. Transform:
    - Position: `X: 15, Y: 1, Z: 10`
    - Scale: `X: 2, Y: 2, Z: 2`
-4. **IMPORTANT:** Do NOT add Rigidbody (this is static)
+4. **Add Rigidbody Component:**
+   - Add Component → **Rigidbody**
+   - **Is Kinematic:** ✅ **CHECK THIS!** (makes it a fixed anchor)
+   - **Use Gravity:** ❌ Uncheck
+
+**Why Kinematic?** This object acts as a static anchor point but needs a Rigidbody for joints to connect to it.
 
 ### 7.2 Create Hinge Joint Door
 
@@ -341,9 +348,10 @@ Assets/
    - Add Component → **Rigidbody**
      - Mass: `2`
      - Use Gravity: ✅
+     - **Is Kinematic:** ❌ Uncheck (this moves dynamically)
    - Add Component → **Hinge Joint**
      - In Hinge Joint:
-       - **Connected Body:** Drag `JointBase` here
+       - **Connected Body:** Drag `JointBase` from Hierarchy here
        - **Anchor:** `X: -0.5, Y: 1, Z: 0` (top left edge)
        - **Axis:** `X: 0, Y: 1, Z: 0` (rotates around Y)
        - **Use Limits:** ✅ Check this
@@ -363,7 +371,10 @@ Assets/
 3. Transform:
    - Position: `X: 15, Y: 5, Z: 5`
    - Scale: `X: 1, Y: 1, Z: 1`
-4. No Rigidbody (static)
+4. **Add Rigidbody Component:**
+   - Add Component → **Rigidbody**
+   - **Is Kinematic:** ✅ **CHECK THIS!** (fixed anchor point)
+   - **Use Gravity:** ❌ Uncheck
 
 5. 3D Object → **Sphere**
 6. Rename: `SpringBall`
@@ -372,9 +383,12 @@ Assets/
    - Scale: `X: 1, Y: 1, Z: 1`
 
 8. Add to SpringBall:
-   - **Rigidbody:** Mass: 1, Use Gravity: ✅
+   - **Rigidbody:** 
+     - Mass: `1`
+     - Use Gravity: ✅
+     - **Is Kinematic:** ❌ Uncheck
    - **Spring Joint:**
-     - **Connected Body:** Drag `SpringAnchor`
+     - **Connected Body:** Drag `SpringAnchor` from Hierarchy here
      - **Spring:** `50`
      - **Damper:** `5`
      - **Min Distance:** `0.5`
@@ -385,20 +399,65 @@ Assets/
 1. 3D Object → **Cube**
 2. Rename: `FixedBox1`
 3. Position: `X: 10, Y: 2, Z: 5`
-4. Add Rigidbody
+4. **Add Rigidbody:**
+   - Mass: `1`
+   - Use Gravity: ✅
+   - **Is Kinematic:** ❌ Uncheck
 
-5. Duplicate → Rename: `FixedBox2`
+5. Duplicate (Ctrl+D or Cmd+D) → Rename: `FixedBox2`
 6. Position: `X: 12, Y: 2, Z: 5`
-7. Add Rigidbody
-8. Add **Fixed Joint**
-   - **Connected Body:** Drag `FixedBox1`
+7. **Already has Rigidbody from duplication**
+8. **Add Fixed Joint to FixedBox2:**
+   - Add Component → **Fixed Joint**
+   - **Connected Body:** Drag `FixedBox1` from Hierarchy here
+   - **Break Force:** `Infinity` (never breaks)
+   - **Break Torque:** `Infinity` (never breaks)
+
+**Result:** The two boxes will act as one rigid object, staying locked together.
 
 ### 7.6 Organize
 
 1. Create Empty → Name: `Zone_2_Joints`
 2. Drag all joint objects into it
 
-✅ **Checkpoint:** You have 3 types of joints working
+### 7.7 Important Joint Troubleshooting
+
+**⚠️ Common Joint Problems and Solutions:**
+
+**Problem 1: "Can't drag object into Connected Body field"**
+- **Solution:** The object MUST have a Rigidbody component!
+- Only Rigidbody components can be connected to joints
+- Use Kinematic Rigidbody for "static" anchors
+
+**Problem 2: "Joint is too loose/wobbly"**
+- **Solution:** Check these settings:
+  - Increase mass of connected objects
+  - For Spring Joint: Increase Spring value (50-100)
+  - For Spring Joint: Increase Damper value (5-10)
+  - Enable Preprocessing in Project Settings → Physics
+
+**Problem 3: "Hinge door spins wildly"**
+- **Solution:** 
+  - Make sure Use Limits is ✅ checked
+  - Set reasonable Min/Max angles (-90 to 90)
+  - Reduce angular velocity if needed
+  - Add Angular Drag to the door's Rigidbody (0.5-2)
+
+**Problem 4: "Spring ball falls instead of bouncing"**
+- **Solution:**
+  - Check Connected Body is assigned
+  - Make sure anchor has Kinematic Rigidbody
+  - Increase Spring value (try 100+)
+  - Check Min/Max Distance settings
+
+**Problem 5: "Fixed boxes don't stay together"**
+- **Solution:**
+  - BOTH objects need Rigidbody
+  - Check Connected Body is properly assigned
+  - Increase Break Force to Infinity if they separate
+  - Make sure both are NOT kinematic
+
+✅ **Checkpoint:** You have 3 types of joints working correctly
 
 🎮 **Test:** Press Play
 - Door swings when ball hits it
@@ -499,8 +558,8 @@ public class ShootingController : MonoBehaviour
             Debug.DrawRay(shootPoint.position, shootPoint.forward * rayDistance, Color.green);
         }
         
-        // Shoot on spacebar
-        if (Input.GetKeyDown(KeyCode.Space) && Time.time > lastShootTime + shootCooldown)
+        // Shoot on F key (NOT spacebar - that's for jumping)
+        if (Input.GetKeyDown(KeyCode.F) && Time.time > lastShootTime + shootCooldown)
         {
             Shoot();
             lastShootTime = Time.time;
@@ -514,7 +573,10 @@ public class ShootingController : MonoBehaviour
         
         // Apply force
         Rigidbody rb = projectile.GetComponent<Rigidbody>();
-        rb.AddForce(shootPoint.forward * shootForce, ForceMode.Impulse);
+        if (rb != null)
+        {
+            rb.AddForce(shootPoint.forward * shootForce, ForceMode.Impulse);
+        }
         
         // Destroy after 5 seconds
         Destroy(projectile, 5f);
@@ -587,7 +649,7 @@ public class ProjectileScript : MonoBehaviour
 
 ✅ **Checkpoint:** Shooting system ready with raycasting
 
-🎮 **Test:** Press Play, press Spacebar - yellow ball shoots and knocks targets!
+🎮 **Test:** Press Play, press **F key** - yellow ball shoots and knocks targets!
 
 ---
 
@@ -817,10 +879,14 @@ public class Collectible : MonoBehaviour
             Destroy(collectParticles.gameObject, 2f);
         }
         
-        // Add score (we'll create this later)
+        // Add score (if GameManager exists)
         if (GameManager.Instance != null)
         {
             GameManager.Instance.AddScore(10);
+        }
+        else
+        {
+            Debug.Log("Score +10 (GameManager not found yet)");
         }
         
         // Destroy collectible
@@ -1056,12 +1122,16 @@ public class PlayerController : MonoBehaviour
 
 2. **Save** the script
 
-### 12.2 Replace Old Scripts on Player
+### 12.2 Add Player Controller to Player
+
+**IMPORTANT:** The Player object should now have TWO scripts:
+1. **PlayerController** (for movement and jumping)
+2. **ShootingController** (for shooting - added in Step 8.6)
 
 1. Select `Player` object
-2. **Remove** any old movement scripts
+2. Check if it already has **ShootingController** (from Step 8.6) - keep it!
 3. Add Component → **PlayerController**
-4. Configure:
+4. Configure PlayerController:
    - **Move Force:** `10`
    - **Max Speed:** `10`
    - **Jump Force:** `5`
@@ -1112,7 +1182,8 @@ public class PlayerController : MonoBehaviour
    Controls:
    WASD - Move
    Space - Jump
-   Space - Shoot
+   F - Shoot
+   R - Reset
    ```
    - **Font Size:** `24`
    - **Alignment:** Top-Right
@@ -1305,7 +1376,8 @@ Create UI texts above each zone explaining what physics concept it demonstrates!
 - [ ] ✅ OnTriggerEnter() detection
 - [ ] ✅ Box Colliders (walls, platforms)
 - [ ] ✅ Sphere Colliders (ball, collectibles)
-- [ ] ✅ Capsule Collider (optional)
+- [ ] ✅ Mesh Collider (ground plane)
+- [ ] ✅ Capsule Collider (optional - see enhancement below)
 - [ ] ✅ Physics Materials (bouncy, slippery, rough)
 - [ ] ✅ Fixed Joint
 - [ ] ✅ Hinge Joint
@@ -1314,6 +1386,14 @@ Create UI texts above each zone explaining what physics concept it demonstrates!
 - [ ] ✅ Particle System
 - [ ] ✅ Cloth Simulation
 - [ ] ✅ Inspector customization (all public variables)
+
+**Optional Enhancement - Add Capsule Collider:**
+If you want to demonstrate ALL collider types, create a pillar:
+1. Create → 3D Object → Capsule
+2. Position it somewhere in the scene
+3. Scale it large: `X: 2, Y: 5, Z: 2`
+4. It automatically has a Capsule Collider
+5. Add tag for documentation: "CapsuleObstacle"
 
 ---
 
@@ -1425,7 +1505,8 @@ Complete physics demonstration project covering:
 
 ## Controls
 - WASD: Move
-- Space: Jump/Shoot
+- Space: Jump
+- F: Shoot
 - R: Reset
 
 ## Requirements
@@ -1576,35 +1657,70 @@ Want to make it even better? Try adding:
 ## 🆘 Troubleshooting Guide
 
 **Ball falls through ground:**
-- Check ground has Collider
+- Check ground has Mesh Collider (Planes have this by default)
 - Check ball has Rigidbody
-- Try Continuous collision detection
+- Try Continuous collision detection on ball's Rigidbody
+- Make sure ground is at Y: 0 and ball starts at Y: 1 or higher
 
 **Platform doesn't move:**
 - Check Is Kinematic is ✅
 - Check script is attached
-- Check script has no errors
+- Check script has no errors (look at Console window)
+- Make sure platform has Rigidbody component
 
 **Shooting doesn't work:**
-- Check Projectile prefab is assigned
-- Check ShootPoint is assigned
-- Check Spacebar input in script
+- Check Projectile prefab is assigned in Inspector
+- Check ShootPoint is assigned in Inspector
+- Press F key (not Spacebar - that's for jumping)
+- Check projectile prefab has Rigidbody
+- Look for errors in Console window
+
+**Can't assign Connected Body in joints:**
+- The anchor object NEEDS a Rigidbody component!
+- Use Kinematic Rigidbody for static anchors
+- Make sure you're dragging from Hierarchy, not Project
 
 **Particles don't show:**
-- Check Particle System is playing
-- Check emission rate > 0
-- Check particles aren't too small/large
+- Check Particle System component is present
+- Check Looping is ✅ checked
+- Check emission Rate over Time > 0
+- Check Start Size isn't too small (try 0.1)
+- Check particle color isn't transparent
 
 **Cloth doesn't wave:**
-- Check Cloth component is added
+- Check Cloth component is added to plane
 - Check Use Gravity is ✅
-- Check vertices aren't all constrained
-- Add Wind Zone for more effect
+- Check External Acceleration has values (try X: 2)
+- Make sure plane has enough vertices (10x10 default is fine)
+- Add Wind Zone for more dramatic effect
 
 **Joints don't work:**
-- Check both objects have Rigidbody
+- BOTH objects need Rigidbody (anchor can be Kinematic)
 - Check Connected Body is assigned
-- Check joint limits/settings
+- Check joint limits/settings are reasonable
+- For Hinge: Check Use Limits is enabled
+- For Spring: Check Spring value > 0
+
+**Player doesn't move:**
+- Check PlayerController script is attached
+- Check Rigidbody is on Player
+- Check moveForce value > 0 (try 10)
+- Make sure Is Kinematic is ❌ unchecked on player
+- Test WASD keys in Play mode
+
+**Collectibles don't trigger:**
+- Check Sphere Collider has "Is Trigger" ✅ checked
+- Check Player has tag "Player"
+- Check Collectible has tag "Collectible"  
+- Check Collectible script is attached
+- Player needs a Collider (Sphere Collider from ball)
+
+**Script errors / won't compile:**
+- Check all using statements at top (UnityEngine, TMPro)
+- Check all brackets { } are matched
+- Check spelling of variable names
+- Look at line number in Console error message
+- Make sure script names match class names exactly
 
 ---
 
@@ -1646,7 +1762,8 @@ This guide teaches you HOW to build the project. Make sure to:
 ```
 CONTROLS:
 WASD - Move ball
-Space - Jump/Shoot
+Space - Jump
+F - Shoot projectiles
 R - Reset game
 
 REQUIREMENTS CHECKLIST:
