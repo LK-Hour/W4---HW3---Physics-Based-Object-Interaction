@@ -48,10 +48,11 @@ A complete physics-based game that demonstrates **EVERYTHING** you learned in We
 
 1. Open **Unity Hub**
 2. Click **"New Project"**
-3. Choose **"3D (Built-in Render Pipeline)"** template
-4. Name it: `PhysicsPlaygroundGame`
-5. Location: Choose where to save
-6. Click **"Create Project"**
+3. Select Unity version **2022.3.47f1** (or your installed 2022.3.x version)
+4. Choose **"3D (Built-in Render Pipeline)"** or **"3D Core"** template
+5. Name it: `PhysicsPlaygroundGame`
+6. Location: Choose where to save
+7. Click **"Create Project"**
 
 ⏱️ *Wait for Unity to open (2-3 minutes)*
 
@@ -1428,7 +1429,8 @@ Complete physics demonstration project covering:
 - R: Reset
 
 ## Requirements
-Unity 2021.3 or later
+- Unity 2022.3.x or later (tested on 2022.3.47f1)
+- TextMeshPro package (imported automatically)
 ```
 
 ### 15.5 Final Submission
