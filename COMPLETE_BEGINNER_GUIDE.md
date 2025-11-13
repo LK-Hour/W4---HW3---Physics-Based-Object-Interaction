@@ -115,51 +115,46 @@ Assets/
 
 ---
 
-## 🎾 Step 3: Player Ball (Dynamic Rigidbody)
+## 🎾 Step 3: Player Character (Capsule — recommended)
 
-### 3.1 Create the Ball
+This project now uses a **Capsule** as the player character (better camera control and no uncontrolled rolling). The capsule is treated as a Dynamic Rigidbody but with rotation constraints on X and Z so it doesn't tip or roll.
 
-1. In **Hierarchy**, right-click → 3D Object → **Sphere**
+### 3.1 Create the Capsule Player
+
+1. In **Hierarchy**, right-click → 3D Object → **Capsule**
 2. Rename it to `Player`
 3. In **Inspector**, set Transform:
-   - Position: `X: 0, Y: 1, Z: 0`
-   - Scale: `X: 1, Y: 1, Z: 1`
+   - Position: `X: 0, Y: 1, Z: 0` (adjust Y to fit capsule height)
+   - Scale: `X: 1, Y: 1.5, Z: 1` (optional — taller capsule)
 
 ### 3.2 Add Rigidbody (Dynamic)
 
-1. With `Player` selected, click **Add Component**
-2. Type `Rigidbody` and select it
-3. In Rigidbody settings:
+1. With `Player` selected, click **Add Component** → `Rigidbody`
+2. In Rigidbody settings set:
    - **Mass:** `1`
-   - **Drag:** `0.5`
-   - **Angular Drag:** `0.5`
+   - **Drag:** `2` (higher for capsule feel)
+   - **Angular Drag:** `5`
    - **Use Gravity:** ✅ Checked
    - **Is Kinematic:** ❌ Unchecked
    - **Interpolate:** `Interpolate`
    - **Collision Detection:** `Continuous`
 
-### 3.3 Add Material Color
+3. **Freeze Rotation** to prevent rolling: in Rigidbody constraints enable **Freeze Rotation X** and **Freeze Rotation Z**. This keeps the capsule upright while allowing movement.
 
-1. In Project → Materials folder, right-click → Create → **Material**
-2. Name it `PlayerMaterial`
-3. Click on the material
-4. In Inspector, click the white box next to **Albedo**
-5. Choose a color (e.g., bright blue: R:0, G:150, B:255)
-6. Drag `PlayerMaterial` onto the `Player` sphere in the Scene view
+### 3.3 Visual Material and Tag
 
-### 3.4 Add Tag
+1. Create a `PlayerMaterial` in `Assets/Materials/`, pick a color, and apply it to the capsule.
+2. Create tag `Player` (Inspector → Tag → Add Tag) and set the capsule's Tag to `Player`.
 
-1. With `Player` selected
-2. In Inspector, click **Tag** dropdown (top)
-3. Click **Add Tag**
-4. Click the **+** button
-5. Type `Player` and Save
-6. Select `Player` object again
-7. Set Tag to `Player`
+### 3.4 ShootPoint for Capsule
 
-✅ **Checkpoint:** You should have a colored sphere with Rigidbody that will fall when you press Play
+1. In Hierarchy expand `Player`, right-click → Create Empty → rename `ShootPoint`.
+2. Position it slightly above and in front of the capsule head, e.g.: `Position: X: 0, Y: 1.2, Z: 0.6`.
+3. This `ShootPoint` will be rotated by the camera at runtime so projectiles fire where you look.
 
-🎮 **Test:** Press Play button - the ball should fall! (It will fall forever since there's no ground yet)
+✅ **Checkpoint:** You now have a capsule player that stays upright and accepts movement, jumping, and shooting inputs
+
+🎮 **Test:** Press Play — the capsule should sit upright; WASD moves, Space jumps (if PlayerController attached), and shooting uses the `ShootPoint` (configured in the ShootingController).
 
 ---
 
@@ -532,57 +527,71 @@ using UnityEngine;
 
 public class ShootingController : MonoBehaviour
 {
-    [Header("Shooting Settings")]
-    public GameObject projectilePrefab;
-    public Transform shootPoint;
-    public float shootForce = 20f;
-    public float shootCooldown = 0.5f;
+   [Header("Shooting Settings")]
+   public GameObject projectilePrefab;
+   public Transform shootPoint;
+   public float shootForce = 20f;
+   public float shootCooldown = 0.5f;
     
-    [Header("Raycasting Settings")]
-    public float rayDistance = 100f;
-    public LayerMask targetLayer;
+   [Header("Raycasting Settings")]
+   public float rayDistance = 100f;
+   public LayerMask targetLayer;
     
-    private float lastShootTime;
+   private float lastShootTime;
     
-    void Update()
-    {
-        // Raycast for aiming (visualization only)
-        RaycastHit hit;
-        if (Physics.Raycast(shootPoint.position, shootPoint.forward, out hit, rayDistance))
-        {
-            // Draw ray in Scene view
-            Debug.DrawRay(shootPoint.position, shootPoint.forward * hit.distance, Color.red);
-        }
-        else
-        {
-            Debug.DrawRay(shootPoint.position, shootPoint.forward * rayDistance, Color.green);
-        }
+   void Update()
+   {
+      // Rotate shoot point to match camera direction for accurate aiming
+      if (Camera.main != null && shootPoint != null)
+      {
+         shootPoint.rotation = Quaternion.Euler(Camera.main.transform.eulerAngles.x, Camera.main.transform.eulerAngles.y, 0);
+      }
         
-        // Shoot on F key (NOT spacebar - that's for jumping)
-        if (Input.GetKeyDown(KeyCode.F) && Time.time > lastShootTime + shootCooldown)
-        {
-            Shoot();
-            lastShootTime = Time.time;
-        }
-    }
+      // Raycast for aiming (visualization only)
+      RaycastHit hit;
+      if (Physics.Raycast(shootPoint.position, shootPoint.forward, out hit, rayDistance))
+      {
+         // Draw ray in Scene view
+         Debug.DrawRay(shootPoint.position, shootPoint.forward * hit.distance, Color.red);
+      }
+      else
+      {
+         Debug.DrawRay(shootPoint.position, shootPoint.forward * rayDistance, Color.green);
+      }
+        
+      // Shoot on LEFT CLICK (Mouse Button 0) - only when cursor is locked
+      if (Input.GetMouseButtonDown(0) && Cursor.lockState == CursorLockMode.Locked && Time.time > lastShootTime + shootCooldown)
+      {
+         Shoot();
+         lastShootTime = Time.time;
+      }
+   }
     
-    void Shoot()
-    {
-        // Spawn projectile
-        GameObject projectile = Instantiate(projectilePrefab, shootPoint.position, shootPoint.rotation);
+   void Shoot()
+   {
+      // Spawn projectile
+      GameObject projectile = Instantiate(projectilePrefab, shootPoint.position, shootPoint.rotation);
         
-        // Apply force
-        Rigidbody rb = projectile.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.AddForce(shootPoint.forward * shootForce, ForceMode.Impulse);
-        }
+      // Ignore collision with the player who shot it (if both have colliders)
+      Collider projectileCollider = projectile.GetComponent<Collider>();
+      Collider playerCollider = GetComponent<Collider>();
+      if (projectileCollider != null && playerCollider != null)
+      {
+         Physics.IgnoreCollision(projectileCollider, playerCollider);
+      }
         
-        // Destroy after 5 seconds
-        Destroy(projectile, 5f);
+      // Apply force
+      Rigidbody rb = projectile.GetComponent<Rigidbody>();
+      if (rb != null)
+      {
+         rb.AddForce(shootPoint.forward * shootForce, ForceMode.Impulse);
+      }
         
-        Debug.Log("Shot fired!");
-    }
+      // Destroy after 5 seconds
+      Destroy(projectile, 5f);
+        
+      Debug.Log("Shot fired!");
+   }
 }
 ```
 
@@ -1006,117 +1015,128 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movement Settings")]
-    public float moveForce = 10f;
-    public float maxSpeed = 10f;
-    public float jumpForce = 5f;
+   [Header("Movement Settings")]
+   public float moveForce = 10f;
+   public float maxSpeed = 5f; // Adjusted for capsule
+   public float jumpForce = 5f;
     
-    [Header("Physics Properties")]
-    public float mass = 1f;
-    public float drag = 0.5f;
-    public float angularDrag = 0.5f;
+   [Header("Physics Properties")]
+   public float mass = 1f;
+   public float drag = 2f; // Increased for capsule feel
+   public float angularDrag = 5f; // Increased for capsule
     
-    [Header("Ground Check")]
-    public float groundCheckDistance = 0.6f;
-    public LayerMask groundLayer;
+   [Header("Ground Check")]
+   public float groundCheckDistance = 1.1f; // Adjusted for capsule height
+   public LayerMask groundLayer;
     
-    private Rigidbody rb;
-    private bool isGrounded;
+   private Rigidbody rb;
+   private bool isGrounded;
     
-    void Start()
-    {
-        rb = GetComponent<Rigidbody>();
+   void Start()
+   {
+      rb = GetComponent<Rigidbody>();
         
-        // Apply customizable physics properties
-        rb.mass = mass;
-        rb.drag = drag;
-        rb.angularDrag = angularDrag;
-    }
-    
-    void Update()
-    {
-        // Check if grounded
-        CheckGround();
+      // Apply customizable physics properties
+      rb.mass = mass;
+      rb.drag = drag;
+      rb.angularDrag = angularDrag;
         
-        // Jump
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
-        {
-            Jump();
-        }
-    }
+      // Freeze X/Z rotation so capsule doesn't roll
+      rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+   }
     
-    void FixedUpdate()
-    {
-        // Get input
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
+   void Update()
+   {
+      // Check if grounded
+      CheckGround();
         
-        // Calculate movement direction
-        Vector3 movement = new Vector3(horizontal, 0, vertical);
-        
-        // Apply force (REQUIREMENT: AddForce)
-        rb.AddForce(movement * moveForce);
-        
-        // Limit max speed
-        if (rb.velocity.magnitude > maxSpeed)
-        {
-            rb.velocity = rb.velocity.normalized * maxSpeed;
-        }
-    }
+      // Jump
+      if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+      {
+         Jump();
+      }
+   }
     
-    void Jump()
-    {
-        // Apply upward force using Impulse mode
-        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-        Debug.Log("Jump!");
-    }
+   void FixedUpdate()
+   {
+      // Get input
+      float horizontal = Input.GetAxis("Horizontal");
+      float vertical = Input.GetAxis("Vertical");
+        
+      // Calculate movement direction relative to camera
+      Vector3 cameraForward = Camera.main.transform.forward;
+      Vector3 cameraRight = Camera.main.transform.right;
+      cameraForward.y = 0; cameraRight.y = 0;
+      cameraForward.Normalize(); cameraRight.Normalize();
+      Vector3 movement = (cameraForward * vertical + cameraRight * horizontal).normalized;
+        
+      // Apply force (REQUIREMENT: AddForce)
+      rb.AddForce(movement * moveForce);
+        
+      // Limit max speed
+      Vector3 horizontalVel = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+      if (horizontalVel.magnitude > maxSpeed)
+      {
+         Vector3 limited = horizontalVel.normalized * maxSpeed;
+         rb.velocity = new Vector3(limited.x, rb.velocity.y, limited.z);
+      }
+        
+      // NO auto-rotation: camera controls view, player stays facing forward
+   }
     
-    void CheckGround()
-    {
-        // Raycast downward to check for ground
-        RaycastHit hit;
-        if (Physics.Raycast(transform.position, Vector3.down, out hit, groundCheckDistance))
-        {
-            isGrounded = hit.collider.CompareTag("Ground") || 
-                        hit.collider.CompareTag("Platform");
+   void Jump()
+   {
+      // Apply upward force using Impulse mode
+      rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+      Debug.Log("Jump!");
+   }
+    
+   void CheckGround()
+   {
+      // Raycast downward to check for ground
+      RaycastHit hit;
+      if (Physics.Raycast(transform.position, Vector3.down, out hit, groundCheckDistance))
+      {
+         isGrounded = hit.collider.CompareTag("Ground") || 
+                  hit.collider.CompareTag("Platform");
             
-            // Debug visualization
-            Debug.DrawRay(transform.position, Vector3.down * groundCheckDistance, Color.green);
-        }
-        else
-        {
-            isGrounded = false;
-            Debug.DrawRay(transform.position, Vector3.down * groundCheckDistance, Color.red);
-        }
-    }
+         // Debug visualization
+         Debug.DrawRay(transform.position, Vector3.down * groundCheckDistance, Color.green);
+      }
+      else
+      {
+         isGrounded = false;
+         Debug.DrawRay(transform.position, Vector3.down * groundCheckDistance, Color.red);
+      }
+   }
     
-    // Collision Detection (REQUIREMENT)
-    void OnCollisionEnter(Collision collision)
-    {
-        Debug.Log("Player collided with: " + collision.gameObject.name);
+   // Collision Detection (REQUIREMENT)
+   void OnCollisionEnter(Collision collision)
+   {
+      Debug.Log("Player collided with: " + collision.gameObject.name);
         
-        // Special collision responses
-        if (collision.gameObject.CompareTag("Target"))
-        {
-            Debug.Log("Hit a target!");
-        }
-    }
+      // Special collision responses
+      if (collision.gameObject.CompareTag("Target"))
+      {
+         Debug.Log("Hit a target!");
+      }
+   }
     
-    // Trigger Detection (REQUIREMENT)
-    void OnTriggerEnter(Collider other)
-    {
-        Debug.Log("Player triggered: " + other.gameObject.name);
+   // Trigger Detection (REQUIREMENT)
+   void OnTriggerEnter(Collider other)
+   {
+      Debug.Log("Player triggered: " + other.gameObject.name);
         
-        if (other.CompareTag("Collectible"))
-        {
-            Debug.Log("Collected item!");
-        }
-    }
+      if (other.CompareTag("Collectible"))
+      {
+         Debug.Log("Collected item!");
+      }
+   }
     
-    void OnCollisionExit(Collision collision)
-    {
-        Debug.Log("Player stopped touching: " + collision.gameObject.name);
-    }
+   void OnCollisionExit(Collision collision)
+   {
+      Debug.Log("Player stopped touching: " + collision.gameObject.name);
+   }
 }
 ```
 
@@ -1761,9 +1781,9 @@ This guide teaches you HOW to build the project. Make sure to:
 
 ```
 CONTROLS:
-WASD - Move ball
+WASD - Move player (capsule)
 Space - Jump
-F - Shoot projectiles
+Left Click - Shoot projectiles
 R - Reset game
 
 REQUIREMENTS CHECKLIST:
